@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -11,6 +12,8 @@ public class MainManager : MonoBehaviour
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public Text CurrentPlayerName;
+    public Text BestPlayerNameAndScore;
     public GameObject GameOverText;
     
     private bool m_Started = false;
@@ -18,7 +21,14 @@ public class MainManager : MonoBehaviour
     
     private bool m_GameOver = false;
 
-    
+    private static int bestScore;
+    private static string bestPlayer;
+
+    private void Awake()
+    {
+        LoadGameRank();
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -36,6 +46,9 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+        CurrentPlayerName.text = PlayerDataHandle.Instance.playerName;
+
+        SetBestPlayer();
     }
 
     private void Update()
@@ -72,5 +85,54 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+    }
+    private void CheckBestPlayer()
+    {
+        int currentScore = PlayerDataHandle.Instance.score;
+        if (currentScore > bestScore)
+        {
+            bestPlayer = PlayerDataHandle.Instance.playerName;
+            bestScore = currentScore;
+
+            BestPlayerNameAndScore.text = $"Best Score - {bestPlayer}: {bestScore}";
+
+            SaveGameRank(bestPlayer, bestScore);
+        }
+    }
+    private void SetBestPlayer()
+    {
+        if (bestPlayer == null && bestScore == 0)
+        {
+            BestPlayerNameAndScore.text = "";
+        }
+        else
+        {
+            BestPlayerNameAndScore.text = $"Best Score - {bestPlayer}:{bestScore}";
+        }
+    }
+    public void SaveGameRank(string bestPlayerName, int bestPlayerScore)
+    {
+        SaveData data = new SaveData();
+        data.bestPlayerName = bestPlayerName;
+        data.bestPlayerScore = bestPlayerScore;
+        string json = JsonUtility.ToJson(data);
+        File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+    }
+    public void LoadGameRank()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            SaveData data = JsonUtility.FromJson<SaveData>(json);
+            bestPlayer = data.bestPlayerName;
+            bestScore = data.bestPlayerScore;
+        }
+    }
+    [System.Serializable]
+    class SaveData
+    {
+        public int bestPlayerScore;
+        public string bestPlayerName;
     }
 }
